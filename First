@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Warehouse Dashboard</title>
+    <link rel="stylesheet" href="First.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    
+    <div class="top-info-bar">
+        <div class="company-info">
+            <h1 class="company-name" data-company-id="1">Acme Corporation Warehouse</h1>
+        </div>
+        <a href="logout.php" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i>
+        </a>
+    </div>
+
+  
+<div class="sidebar">
+    <ul class="menu">
+        <li onclick="showTab('inventory')" class="active">
+            <a href="#">
+                <i class="fas fa-boxes"></i>
+                <span>Inventory</span>
+            </a>
+        </li>
+        <li onclick="showTab('orders')">
+            <a href="#">
+                <i class="fas fa-shipping-fast"></i>
+                <span>Orders</span>
+            </a>
+        </li>
+        <li onclick="showTab('analytics')">
+            <a href="#">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
+            </a>
+        </li>
+    </ul>
+    <div class="sidebar-footer">
+        <a href="#" class="help-logo">
+            <i class="fas fa-question-circle"></i>
+            <span>Help</span>
+        </a>
+    </div>
+</div>
+
+
+<div class="main-content">
+   
+    <div id="inventory" class="tab-content active">
+        <h2>Inventory</h2>
+        <div id="inventory-types">
+            <div class="empty-message" id="empty-message">
+                <p><span id="inventory-count">0</span> inventory types found.</p>
+            </div>
+            <button id="add-inventory-btn">Add Inventory Type</button>
+            <div class="inventory-list" id="inventory-list">
+           
+            </div>
+        </div>
+    </div>
+
+   
+    <div id="orders" class="tab-content">
+        <h2>Orders</h2>
+        <p>This is the Orders tab.</p>
+    </div>
+
+  
+    <div id="analytics" class="tab-content">
+        <h2>Analytics</h2>
+        <p>This is the Analytics tab.</p>
+    </div>
+</div>
+
+
+    <div id="add-inventory-modal" class="modal">
+        <div class="modal-content">
+            <h3>Add New Inventory Type</h3>
+            <div class="form-group">
+                <label for="inventory-type-name">Inventory Type Name:</label>
+                <input type="text" id="inventory-type-name" placeholder="Enter inventory type name" required />
+            </div>
+            <div class="form-group">
+                <label for="inventory-description">Description:</label>
+                <textarea id="inventory-description" placeholder="Enter inventory description" required></textarea>
+            </div>
+            <div class="form-group buttons">
+                <button id="save-inventory-type">Save</button>
+                <button id="close-modal">Close</button>
+            </div>
+        </div>
+    </div>
+   
+    <script src="First.js"></script>
+</body>
+</html>
