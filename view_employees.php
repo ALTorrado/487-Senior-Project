@@ -2,10 +2,12 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 require_once 'db_connect.php';
-session_start();
+require_once 'session.php';
 
-$isAdmin = isset($_SESSION['role']) && $_SESSION['role'] == 1;
+requireAdmin();
 
+$isSuperAdmin = empty($_SESSION['company_code']);
+$userCompanyCode = $_SESSION['company_code'];
 
 if (!isset($_GET['company_code'])) {
     header("Location: admin_dashboard.php");
@@ -14,6 +16,12 @@ if (!isset($_GET['company_code'])) {
 
 $company_code = $_GET['company_code'];
 
+if (!$isSuperAdmin && $company_code !== $userCompanyCode) {
+    $_SESSION['message'] = "Access denied: You can only view your own company.";
+    $_SESSION['message_type'] = "error";
+    header("Location: admin_dashboard.php");
+    exit;
+}
 
 $companyStmt = $conn->prepare("SELECT * FROM Company WHERE Company_Code = :code");
 $companyStmt->execute([':code' => $company_code]);
@@ -144,23 +152,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
         case 'delete_employee':
             $user_id = $_POST['user_id'];
+            $is_self_delete = ($user_id == $_SESSION['user_id']);
             
             try {
+                $conn->beginTransaction();
+                
+                $stmt = $conn->prepare("
+                    DELETE FROM Order_Products 
+                    WHERE Orders_Order_Id IN (
+                        SELECT Order_Id FROM Orders WHERE Users_User_Id = :user_id
+                    )
+                ");
+                $stmt->execute([':user_id' => $user_id]);
+                
+                $stmt = $conn->prepare("DELETE FROM Orders WHERE Users_User_Id = :user_id");
+                $stmt->execute([':user_id' => $user_id]);
+                
                 $stmt = $conn->prepare("DELETE FROM Users WHERE User_Id = :user_id");
                 $result = $stmt->execute([':user_id' => $user_id]);
                 
+                $conn->commit();
+                
                 if ($result) {
-                    $_SESSION['message'] = "Employee deleted successfully!";
-                    $_SESSION['message_type'] = "success";
+                    if ($is_self_delete) {
+                        session_destroy();
+                        header("Location: login.php?message=self_deleted");
+                        exit;
+                    } else {
+                        $_SESSION['message'] = "Employee deleted successfully!";
+                        $_SESSION['message_type'] = "success";
+                    }
                 } else {
                     $_SESSION['message'] = "Failed to delete employee.";
                     $_SESSION['message_type'] = "error";
                 }
             } catch (PDOException $e) {
+                $conn->rollBack();
                 $_SESSION['message'] = "Error deleting employee: " . $e->getMessage();
                 $_SESSION['message_type'] = "error";
             }
-            header("Location: view_employees.php?company_code=$company_code");
+            
+            if (!$is_self_delete) {
+                header("Location: view_employees.php?company_code=$company_code");
+            }
             exit;
     }
 }
@@ -203,7 +237,7 @@ function getRoleBadgeClass($roleId) {
     <link rel="stylesheet" href="view_employees.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body data-current-user-id="<?= $_SESSION['user_id'] ?>">
     <div class="top-info-bar">
         <h1>Admin Dashboard</h1>
     </div>
@@ -312,7 +346,6 @@ function getRoleBadgeClass($roleId) {
         </div>
     </div>
 
-    <!-- Add Employee Modal -->
     <div id="add-employee-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -357,7 +390,6 @@ function getRoleBadgeClass($roleId) {
         </div>
     </div>
 
-    <!-- Edit Employee Modal -->
     <div id="edit-employee-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -403,7 +435,6 @@ function getRoleBadgeClass($roleId) {
         </div>
     </div>
 
-    <!-- Delete Employee Modal -->
     <div id="delete-employee-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
