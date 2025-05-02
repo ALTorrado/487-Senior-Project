@@ -406,7 +406,6 @@
       border: 1px solid #bdc3c7;
   }
 
-  /* Orders Grid Styling - Matching Inventory Categories with Better Contrast */
   .orders-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -418,7 +417,7 @@
       border: 1px solid #bdc3c7;
       padding: 15px;
       border-radius: 5px;
-      background-color: #ecf0f1; /* Same background as inventory items */
+      background-color: #ecf0f1;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
@@ -428,7 +427,6 @@
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   }
 
-  /* Color variations based on order status */
   .order-type.pending {
       border-left: 4px solid #f39c12;
   }
@@ -496,8 +494,6 @@
       background-color: #c0392b;
   }
 
-  /* Style for Add Order button matching Add Inventory button */
-  /* More specific selector */
   #orders .tab-content #add-order-btn,
   button#add-order-btn {
       background-color: #34495e !important;
@@ -565,7 +561,6 @@
       border-color: #dc3545;
   }
 
-/* Enhanced dropdown styling */
 select#category-select,
 select#product-select {
     width: 100%;
@@ -574,7 +569,7 @@ select#product-select {
     border-radius: 4px;
     font-size: 16px;
     height: auto;
-    appearance: auto; /* Ensure native dropdown appearance */
+    appearance: auto; 
     -webkit-appearance: auto;
     -moz-appearance: auto;
     background-color: white;
@@ -583,7 +578,6 @@ select#product-select {
     position: relative;
 }
 
-/* Improve dropdown options visibility */
 select#category-select option,
 select#product-select option {
     font-size: 16px;
@@ -591,14 +585,12 @@ select#product-select option {
     background-color: white;
 }
 
-/* Container to ensure proper spacing */
 .form-group {
     margin-bottom: 20px;
     position: relative;
-    z-index: 10; /* Ensure dropdown appears above other elements */
+    z-index: 10;
 }
 
-/* Focus state for better usability */
 select#category-select:focus,
 select#product-select:focus {
     border-color: #3498db;
@@ -606,7 +598,6 @@ select#product-select:focus {
     box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
 }
 
-/* Disabled state styling */
 select:disabled {
     background-color: #ecf0f1;
     cursor: not-allowed;
@@ -631,25 +622,22 @@ select:disabled {
     border: 1px solid #f5c6cb;
 }
 
-/* Specific styling for remove buttons */
 .inventory-type .remove-btn {
-    background-color: #e74c3c; /* Red color */
+    background-color: #e74c3c; 
 }
 
 .inventory-type .remove-btn:hover {
-    background-color: #c0392b; /* Darker red on hover */
+    background-color: #c0392b; 
 }
 
-/* Specific styling for order remove buttons */
 #orders .remove-order-btn {
-    background-color: #e74c3c; /* Red color */
+    background-color: #e74c3c; 
 }
 
 #orders .remove-order-btn:hover {
-    background-color: #c0392b; /* Darker red on hover */
+    background-color: #c0392b; 
 }
 
-/* Error message modal styling */
 .error-modal {
     display: none;
     position: fixed;
@@ -703,7 +691,6 @@ select:disabled {
     background-color: #c0392b;
 }
 
-/* Add this to your CSS */
 .product-selection {
     max-height: 200px;
     overflow-y: auto;
@@ -724,7 +711,6 @@ select:disabled {
     padding: 3px;
 }
 
-/* Analytics Styles */
 .analytics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -813,7 +799,6 @@ select:disabled {
     padding: 20px;
 }
 
-/* Help Modal Styles */
 .admin-contacts {
     margin: 20px 0;
     max-height: 300px;
