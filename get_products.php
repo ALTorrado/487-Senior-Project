@@ -1,13 +1,8 @@
 <?php
 require_once 'db_connect.php';
-session_start();
+require_once 'session.php'; 
 
-// Security check - ensure user is logged in
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
-}
+requireLogin(); 
 
 header('Content-Type: application/json');
 
