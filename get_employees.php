@@ -1,8 +1,8 @@
 <?php
 require_once 'db_connect.php';
-session_start();
+require_once 'session.php'; 
 
-if (isset($_SESSION['role']) && $_SESSION['role'] == 1) {
+if (isAdmin()) { 
     $company_code = $_GET['company_code'];
     
     $stmt = $conn->prepare("SELECT * FROM Users WHERE Company_Code = :code");
