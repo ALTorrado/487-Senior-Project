@@ -1,42 +1,48 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
+    const inputs = document.querySelectorAll('input[maxlength]');
+    
+    inputs.forEach(input => {
+        const maxLength = input.getAttribute('maxlength');
+        const counter = input.nextElementSibling;
         
-        const name = document.getElementById('name').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        const companyCode = document.getElementById('company_code').value.trim();
-
-        if (!name || !email || !password || !companyCode) {
-            alert('Please fill in all fields');
-            return;
+        if (counter && counter.classList.contains('char-count')) {
+            counter.textContent = `${input.value.length}/${maxLength} characters`;
+            
+            input.addEventListener('input', function() {
+                counter.textContent = `${this.value.length}/${maxLength} characters`;
+                
+                if (this.value.length > maxLength * 0.8) {
+                    counter.style.color = '#e74c3c';
+                } else {
+                    counter.style.color = '';
+                }
+            });
         }
-
-        if (!isValidEmail(email)) {
-            alert('Please enter a valid email address');
-            return;
-        }
-
-        if (password.length < 8) {
-            alert('Password must be at least 8 characters long');
-            return;
-        }
-
-        this.submit();
     });
-
-    function isValidEmail(email) {
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailPattern.test(email);
+    
+    const passwordField = document.getElementById('password');
+    if (passwordField) {
+        passwordField.addEventListener('input', function() {
+            const counter = this.nextElementSibling;
+            const length = this.value.length;
+            const maxLength = this.getAttribute('maxlength');
+            
+            counter.textContent = `${length}/${maxLength} characters`;
+            
+            if (length < 6) {
+                counter.style.color = '#e74c3c'; 
+            } else if (length < 10) {
+                counter.style.color = '#f39c12'; 
+            } else {
+                counter.style.color = '#27ae60'; 
+            }
+        });
     }
 });
-
 document.querySelectorAll('.approve-employee').forEach(btn => {
     btn.addEventListener('click', () => {
         if (confirm('Are you sure you want to approve this employee?')) {
-            updateEmployeeStatus(btn.dataset.id, 1, true); // 1 = Approved, true = refresh pending tab
+            updateEmployeeStatus(btn.dataset.id, 1, true);
         }
     });
 });
@@ -44,7 +50,7 @@ document.querySelectorAll('.approve-employee').forEach(btn => {
 document.querySelectorAll('.reject-employee').forEach(btn => {
     btn.addEventListener('click', () => {
         if (confirm('Are you sure you want to reject this employee?')) {
-            updateEmployeeStatus(btn.dataset.id, 2, true); // 2 = Rejected, true = refresh pending tab
+            updateEmployeeStatus(btn.dataset.id, 2, true);
         }
     });
 });
