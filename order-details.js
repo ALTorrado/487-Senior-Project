@@ -4,30 +4,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const quantityInput = document.getElementById('product-quantity');
     const addToOrderBtn = document.getElementById('add-to-order');
     
-    // When category selection changes
     categorySelect.addEventListener('change', function() {
         const categoryId = this.value;
         
-        // Reset product dropdown
         productSelect.innerHTML = '<option value="">-- Select a Product --</option>';
         
         if (!categoryId) {
-            // If no category selected, disable product selection
             productSelect.disabled = true;
             quantityInput.disabled = true;
             addToOrderBtn.disabled = true;
             return;
         }
         
-        // Enable product dropdown while loading
         productSelect.disabled = true;
         productSelect.innerHTML = '<option value="">Loading products...</option>';
         
-        // Fetch products for the selected category
         fetch(`get_products.php?category_id=${categoryId}`)
             .then(response => response.json())
             .then(products => {
-                // Populate product dropdown
                 productSelect.innerHTML = '<option value="">-- Select a Product --</option>';
                 
                 products.forEach(product => {
@@ -39,7 +33,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     productSelect.appendChild(option);
                 });
                 
-                // Enable product selection
                 productSelect.disabled = false;
             })
             .catch(error => {
@@ -48,7 +41,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
     
-    // Enable/disable add button based on product selection
     productSelect.addEventListener('change', function() {
         const productSelected = this.value !== '';
         quantityInput.disabled = !productSelected;
@@ -62,7 +54,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Add product to order when button is clicked
     addToOrderBtn.addEventListener('click', function() {
         const categoryId = categorySelect.value;
         const productId = productSelect.value;
@@ -77,19 +68,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const productName = selectedOption.textContent;
         const productPrice = selectedOption.dataset.price;
         
-        // Add to order (implement this part based on your order structure)
         addProductToOrder(productId, productName, quantity, productPrice);
     });
 });
 
-// Example function to add product to order (customize based on your UI)
 function addProductToOrder(productId, productName, quantity, price) {
     const orderItemsTable = document.getElementById('order-items-tbody');
     
-    // Check if product already exists in order
     const existingRow = document.querySelector(`tr[data-product-id="${productId}"]`);
     if (existingRow) {
-        // Update existing product quantity
         const quantityCell = existingRow.querySelector('.item-quantity');
         const priceCell = existingRow.querySelector('.item-total');
         const newQuantity = parseInt(quantityCell.dataset.quantity) + parseInt(quantity);
@@ -99,12 +86,10 @@ function addProductToOrder(productId, productName, quantity, price) {
         quantityCell.dataset.quantity = newQuantity;
         priceCell.textContent = `$${newTotal}`;
         
-        // Update order total
         updateOrderTotal();
         return;
     }
     
-    // Create new row for product
     const row = document.createElement('tr');
     row.dataset.productId = productId;
     row.dataset.price = price;
@@ -121,7 +106,6 @@ function addProductToOrder(productId, productName, quantity, price) {
         </td>
     `;
     
-    // Add remove button functionality
     row.querySelector('.remove-item-btn').addEventListener('click', function() {
         row.remove();
         updateOrderTotal();
@@ -129,17 +113,14 @@ function addProductToOrder(productId, productName, quantity, price) {
     
     orderItemsTable.appendChild(row);
     
-    // Reset product selection
     document.getElementById('product-select').value = '';
     document.getElementById('product-quantity').value = 1;
     document.getElementById('product-quantity').disabled = true;
     document.getElementById('add-to-order').disabled = true;
     
-    // Update order total
     updateOrderTotal();
 }
 
-// Function to update order total
 function updateOrderTotal() {
     const orderItemsRows = document.querySelectorAll('#order-items-tbody tr');
     let total = 0;
@@ -153,21 +134,16 @@ function updateOrderTotal() {
     document.getElementById('total-amount-input').value = total.toFixed(2);
 }
 
-// Replace your current JavaScript modal handlers with this:
 document.addEventListener('DOMContentLoaded', function() {
-    // Add Product Modal
     const addProductBtn = document.getElementById('add-product-btn');
     const addProductModal = document.getElementById('add-product-modal');
     
     if (addProductBtn && addProductModal) {
         addProductBtn.addEventListener('click', function() {
-            // Clear any inline styles first
             addProductModal.removeAttribute('style');
-            // Then set display to flex
             addProductModal.style.display = 'flex';
         });
         
-        // Close modal when X is clicked
         const closeButtons = addProductModal.querySelectorAll('.close-modal, .cancel-btn');
         closeButtons.forEach(button => {
             button.addEventListener('click', function() {
@@ -176,19 +152,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Edit Order Modal
     const editOrderBtn = document.getElementById('edit-order-btn');
     const editOrderModal = document.getElementById('edit-order-modal');
     
     if (editOrderBtn && editOrderModal) {
         editOrderBtn.addEventListener('click', function() {
-            // Clear any inline styles first
             editOrderModal.removeAttribute('style');
-            // Then set display to flex
             editOrderModal.style.display = 'flex';
         });
         
-        // Close modal when X is clicked
         const closeButtons = editOrderModal.querySelectorAll('.close-modal, .cancel-btn');
         closeButtons.forEach(button => {
             button.addEventListener('click', function() {
@@ -197,7 +169,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Close modals when clicking outside of them
     window.addEventListener('click', function(event) {
         if (event.target === addProductModal) {
             addProductModal.style.display = 'none';
