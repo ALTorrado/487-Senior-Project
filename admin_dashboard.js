@@ -243,18 +243,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     
-    document.querySelectorAll('.approve-employee').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to approve this employee?')) {
-                updateEmployeeStatus(btn.dataset.id, 1, true); 
-            }
-        });
-    });
-
-    document.querySelectorAll('.reject-employee').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to reject this employee?')) {
-                updateEmployeeStatus(btn.dataset.id, 2, true); 
+    document.querySelectorAll('.approve-employee, .reject-employee').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const action = this.classList.contains('approve-employee') ? 'approve' : 'reject';
+            const userId = this.dataset.id;
+            const status = action === 'approve' ? 1 : 2;
+            
+            if (confirm(`Are you sure you want to ${action} this employee?`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = 'admin_dashboard.php';
+                form.innerHTML = `
+                    <input type="hidden" name="action" value="update_employee_status">
+                    <input type="hidden" name="user_id" value="${userId}">
+                    <input type="hidden" name="status" value="${status}">
+                    <input type="hidden" name="refresh_tab" value="pending">
+                `;
+                document.body.appendChild(form);
+                form.submit();
             }
         });
     });
