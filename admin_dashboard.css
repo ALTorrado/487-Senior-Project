@@ -220,7 +220,6 @@ tr:hover {
     margin-bottom: 1.5rem;
 }
 
-/* Modal Styles - Improved layout */
 .modal {
     display: none;
     position: fixed;
@@ -337,7 +336,6 @@ tr:hover {
     background-color: #c0392b;
 }
 
-/* Status badges */
 .status-badge {
     padding: 5px 10px;
     border-radius: 20px;
@@ -362,7 +360,6 @@ tr:hover {
     color: white;
 }
 
-/* Role badges */
 .role-badge {
     padding: 5px 10px;
     border-radius: 20px;
@@ -387,15 +384,14 @@ tr:hover {
     color: white;
 }
 
-/* Alert styles */
 .alert-container {
     width: 100%;
     display: flex;
     justify-content: center;
     position: fixed;
-    top: 90px; /* Position below the top bar */
+    top: 90px; 
     z-index: 9999;
-    pointer-events: none; /* Allow clicking through the container */
+    pointer-events: none; 
 }
 
 .alert {
@@ -403,12 +399,12 @@ tr:hover {
     margin: 0;
     border: 1px solid transparent;
     border-radius: 4px;
-    width: auto; /* Auto width based on content */
-    max-width: 500px; /* Maximum width */
+    width: auto; 
+    max-width: 500px; 
     text-align: center;
     font-size: 14px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    pointer-events: auto; /* Make the alert itself clickable */
+    pointer-events: auto; 
     display: inline-block;
 }
 
@@ -424,7 +420,6 @@ tr:hover {
     border-color: #f5c6cb;
 }
 
-/* Add a close button to alerts */
 .alert .close-alert {
     margin-left: 15px;
     color: inherit;
@@ -433,7 +428,6 @@ tr:hover {
     float: right;
 }
 
-/* Employee view styles */
 .employee-details {
     padding: 2rem;
     background: white;
@@ -499,4 +493,18 @@ tr:hover {
 .no-company {
     color: #7f8c8d;
     font-style: italic;
+}
+
+.admin-notice {
+    background-color: #f8f9fa;
+    border-left: 4px solid #3498db;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+}
+
+.admin-notice p {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 14px;
 }
