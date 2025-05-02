@@ -2,7 +2,6 @@
 session_start();
 require '/home/altorrad/public_html/connect.php';
 
-// Basic test connection
 try {
     $stmt = $conn->query("SELECT 1");
     echo "Database connection successful!";
