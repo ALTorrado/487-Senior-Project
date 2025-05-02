@@ -1,14 +1,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Script loaded - checking for add button');
     
-    // Direct, simple approach for the Add Item button
     const addItemBtn = document.getElementById('add-item-btn');
     const addItemModal = document.getElementById('add-item-modal');
     
     console.log('Add button found:', !!addItemBtn);
     console.log('Modal found:', !!addItemModal);
     
-    // Simple click handler
     if (addItemBtn && addItemModal) {
         addItemBtn.onclick = function() {
             console.log('Add button clicked');
@@ -17,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Click handler attached to add button');
     }
     
-    // Close button for add modal
     const closeModalBtn = document.getElementById('close-modal');
     if (closeModalBtn && addItemModal) {
         closeModalBtn.onclick = function() {
@@ -25,7 +22,6 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // Edit functionality 
     const editItemModal = document.getElementById('edit-item-modal');
     const editButtons = document.querySelectorAll('.edit-item');
     
@@ -33,7 +29,6 @@ document.addEventListener('DOMContentLoaded', function() {
         button.onclick = function() {
             const productId = this.getAttribute('data-id');
             
-            // Get data from the table row
             const row = this.closest('tr');
             const name = row.cells[0].textContent;
             const description = row.cells[1].textContent;
@@ -41,7 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const quantity = row.cells[3].textContent;
             const units = row.cells[4].textContent;
             
-            // Populate the edit form
             document.getElementById('edit-item-id').value = productId;
             document.getElementById('edit-item-name').value = name;
             document.getElementById('edit-item-description').value = description;
@@ -53,7 +47,6 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     });
     
-    // Close button for edit modal
     const closeEditModalBtn = document.getElementById('close-edit-modal');
     if (closeEditModalBtn && editItemModal) {
         closeEditModalBtn.onclick = function() {
@@ -61,7 +54,6 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // Close modals when clicking outside
     window.onclick = function(event) {
         if (event.target === addItemModal) {
             addItemModal.style.display = 'none';
@@ -71,7 +63,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
-    // Confirm delete
     const deleteButtons = document.querySelectorAll('.delete-item');
     deleteButtons.forEach(button => {
         button.onclick = function(e) {
