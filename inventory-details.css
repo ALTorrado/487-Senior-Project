@@ -35,9 +35,7 @@
       color: #ffffff;
       font-weight: 600;
       margin: 0;
-  }/* ==================== */
-  /* Main Content */
-  /* ==================== */
+  } 
   .inventory-details {
       margin: 100px 3rem 3rem 3rem;
       padding: 2rem;
@@ -57,7 +55,6 @@
       font-weight: 600;
   }
 
-  /* Styling for Edit and Delete buttons in inventory details */
   .edit-item {
       background-color: #3498db;
       color: white;
@@ -95,7 +92,6 @@
       background-color: #c0392b;
   }
 
-  /* Add icons to buttons */
   .edit-item:before {
       content: "✎";
       font-size: 14px;
@@ -106,7 +102,6 @@
       font-size: 14px;
   }
 
-  /* Style for the add-item-btn button */
   #add-item-btn {
       background-color: #2ecc71;
       color: white;
@@ -132,12 +127,10 @@
       font-weight: bold;
   }
 
-  /* Ensure buttons in the same row have consistent heights */
   .inventory-table td button {
       margin: 2px;
   }
 
-  /* Ensure form doesn't affect button positioning */
   .inventory-table td form {
       display: inline;
   }
@@ -185,7 +178,6 @@
       transform: translate(-50%, -50%);
   }
 
-  /* Modal button styling */
   .modal .form-group.buttons {
       display: flex;
       justify-content: flex-end;
@@ -193,7 +185,6 @@
       margin-top: 20px;
   }
 
-  /* Save/Update button styling */
   #save-item, #update-item {
       background-color: #3498db;
       color: white;
@@ -209,7 +200,6 @@
       background-color: #2980b9;
   }
 
-  /* Close button styling */
   #close-modal, #close-edit-modal {
       background-color: #e74c3c;
       color: white;
@@ -225,7 +215,6 @@
       background-color: #c0392b;
   }
 
-  /* Add icons to modal buttons */
   #save-item:before, #update-item:before {
       content: "✓";
       margin-right: 5px;
@@ -236,7 +225,6 @@
       margin-right: 5px;
   }
 
-  /* Modal form styling improvements */
   .modal .form-group {
       margin-bottom: 15px;
   }
