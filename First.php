@@ -1,7 +1,8 @@
 <?php
 require_once 'db_connect.php';
-session_start();
+require_once 'session.php'; 
 
+requireLogin(); 
 
 if (!$conn) {
     echo "<div class='alert alert-danger'>Database connection error</div>";
@@ -14,7 +15,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     $name = $_POST['name'];
     $description = $_POST['description'];
     
-    // Debug company code
+  
     echo "<!-- Company code from session: " . ($_SESSION['company_code'] ?? 'Not set') . " -->";
     $company_code = $_SESSION['company_code'] ?? '';
     
@@ -29,7 +30,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 ':company_code' => $company_code
             ]);
             
-            // Verify the insert with the company code
             echo "<!-- Insert attempted with company_code: $company_code -->";
             
             if ($result) {
@@ -43,15 +43,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     }
 }
 
-// Improved handler for deleting inventory types
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'delete_inventory') {
     $category_id = $_POST['category_id'];
     
-    // Get the company code from session
     $company_code = $_SESSION['company_code'] ?? '';
     
     try {
-        // First check if category exists and get its name
         $checkStmt = $conn->prepare("SELECT * FROM Category WHERE Category_Id = ?");
         $checkStmt->execute([$category_id]);
         $categoryData = $checkStmt->fetch(PDO::FETCH_ASSOC);
@@ -60,16 +57,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
             echo "<div class='alert alert-danger'>Error: Category not found.</div>";
         } else {
             $foundCompanyCode = $categoryData['Company_Code'];
-            $categoryName = $categoryData['Name']; // Get the name for a better message
+            $categoryName = $categoryData['Name']; 
             
             if ($foundCompanyCode === $company_code) {
-                // Matching company - delete it
-                // Check if products exist in this category
                 $stmt = $conn->prepare("SELECT COUNT(*) FROM Product WHERE Category_Category_Id = :category_id");
                 $stmt->execute([':category_id' => $category_id]);
                 $productCount = $stmt->fetchColumn();
 
-                // Add this HTML to your page (can be hidden initially)
                 echo '<!-- Error Message Modal -->
                 <div id="error-modal" class="error-modal">
                     <div class="error-modal-content">
@@ -80,12 +74,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 </div>';
 
                 if ($productCount > 0) {
-                    // Products exist - show alert
                     echo "<script>
                         alert('Cannot delete this category because it contains products. Please delete all products in this category first.');
                     </script>";
                 } else {
-                    // No products - safe to delete
                     $stmt = $conn->prepare("DELETE FROM Category WHERE Category_Id = :category_id");
                     $stmt->execute([':category_id' => $category_id]);
                     echo "<script>
@@ -101,13 +93,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     }
 }
 
-// Add this code temporarily to debug database structure
 try {
     $check_stmt = $conn->query("DESCRIBE Category");
     $columns = $check_stmt->fetchAll(PDO::FETCH_COLUMN);
     echo "<!-- Category columns: " . implode(", ", $columns) . " -->";
     
-    // Check if Company_Code exists
     if (!in_array('Company_Code', $columns)) {
         echo "<div class='alert alert-danger'>Error: Company_Code column is missing in Category table</div>";
     }
@@ -115,15 +105,13 @@ try {
     echo "<!-- Structure check error: " . $e->getMessage() . " -->";
 }
 
-// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
 }
 
-// Get company name for the logged-in user
 $company_code = $_SESSION['company_code'];
-$company_name = "Warehouse Dashboard"; // Default name
+$company_name = "Warehouse Dashboard"; 
 
 if ($company_code) {
     $stmt = $conn->prepare("SELECT Name FROM Company WHERE Company_Code = :code");
@@ -135,18 +123,15 @@ if ($company_code) {
     }
 }
 
-// Get user role
 $user_id = $_SESSION['user_id'];
 $stmt = $conn->prepare("SELECT Role FROM Users WHERE User_Id = :user_id");
 $stmt->execute([':user_id' => $user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
-$isManager = isset($user['Role']) && ($user['Role'] == 2 || $user['Role'] == 1); // Role 2 = Manager, Role 1 = Admin
+$isManager = isset($user['Role']) && ($user['Role'] == 2 || $user['Role'] == 1); 
 
-// Handle order operations
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     
     
-    // Add order handling code
     if (isset($_POST['action']) && $_POST['action'] == 'add_order') {
         $customerName = $_POST['customer_name'];
         $orderDate = $_POST['order_date'];
@@ -154,7 +139,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $paymentStatus = $_POST['payment_status'];
         
         try {
-            // Insert the order with zero initial amount
             $insertOrderStmt = $conn->prepare("
                 INSERT INTO Orders (Order_Date, Status, Users_User_Id, Total_Amount, Payment_Status, Customer_Name) 
                 VALUES (?, ?, ?, 0, ?, ?)
@@ -163,37 +147,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             $orderId = $conn->lastInsertId();
             
-            // Store success message in session
             $_SESSION['alert_message'] = "Order created successfully! You can now add products to this order.";
             $_SESSION['alert_type'] = "success";
             
-            // Redirect to order details page to add products
             header("Location: order-details.php?order_id=" . $orderId);
             exit;
             
         } catch (PDOException $e) {
-            // Store error message in session
             $_SESSION['alert_message'] = "Error creating order: " . $e->getMessage();
             $_SESSION['alert_type'] = "danger";
             
-            // Redirect back to orders tab
             header("Location: First.php#orders");
             exit;
         }
     }
 }
 
-// Ensure categories are correctly filtered by company_code
 $stmt = $conn->prepare("SELECT * FROM Category WHERE Company_Code = :company_code");
 $stmt->bindParam(':company_code', $company_code);
 $stmt->execute();
 $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Debug output
 echo "<!-- Category query using company_code: $company_code -->";
 echo "<!-- Found " . count($categories) . " categories -->";
 
-// Get all orders for this company
 $stmt = $conn->prepare("
     SELECT o.*, u.Name as CreatedByName 
     FROM Orders o
@@ -204,10 +181,8 @@ $stmt = $conn->prepare("
 $stmt->execute([':company_code' => $company_code]);
 $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Update empty message display based on order count
 $ordersCount = count($orders);
 
-// Add this to handle status updates for existing orders
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'update_order_status') {
     $orderId = $_POST['order_id'];
     $newStatus = $_POST['new_status'];
@@ -227,40 +202,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     }
 }
 
-// Add this code to handle order deletion
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'delete_order') {
     $orderId = $_POST['order_id'];
     
     try {
-        // First check if order exists
         $checkStmt = $conn->prepare("SELECT * FROM Orders WHERE Order_Id = ?");
         $checkStmt->execute([$orderId]);
         $orderData = $checkStmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$orderData) {
-            // Set error message in session
             $_SESSION['alert_message'] = "Error: Order not found.";
             $_SESSION['alert_type'] = "danger";
         } else {
-            // First delete any order items (to avoid foreign key constraints)
             $deleteItemsStmt = $conn->prepare("DELETE FROM Order_Products WHERE Orders_Order_Id = ?");
             $deleteItemsStmt->execute([$orderId]);
             
-            // Then delete the order itself
             $deleteOrderStmt = $conn->prepare("DELETE FROM Orders WHERE Order_Id = ?");
             $deleteOrderStmt->execute([$orderId]);
             
-            // Set success message in session
             $_SESSION['alert_message'] = "Order deleted successfully!";
             $_SESSION['alert_type'] = "success";
         }
     } catch (PDOException $e) {
-        // Set error message in session
         $_SESSION['alert_message'] = "Database error: " . $e->getMessage();
         $_SESSION['alert_type'] = "danger";
     }
     
-    // Important: Redirect to refresh the page
     header("Location: First.php#orders");
     exit;
 }
@@ -324,14 +291,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 <div class="inventory-list" id="inventory-list">
                     <?php foreach ($categories as $category): ?>
                     <div class="inventory-type">
-                        <!-- Remove the ID display from the category name -->
                         <h4><?= htmlspecialchars($category['Name']) ?></h4>
                         <p>Description: <?= htmlspecialchars($category['Description']) ?></p>
                         <button onclick="window.location.href='inventory-details.php?type=<?= urlencode($category['Name']) ?>&category_id=<?= $category['Category_Id'] ?>'">View Details</button>
                         <form method="POST" style="display: inline;">
                             <input type="hidden" name="action" value="delete_inventory">
                             <input type="hidden" name="category_id" value="<?= $category['Category_Id'] ?>">
-                            <!-- Remove the ID from the button text -->
                             <button type="submit" class="remove-btn">Remove</button>
                         </form>
                     </div>
@@ -348,7 +313,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                     <?= $_SESSION['alert_message'] ?>
                 </div>
                 <?php 
-                // Clear the message after displaying it
                 unset($_SESSION['alert_message']);
                 unset($_SESSION['alert_type']);
                 ?>
@@ -368,10 +332,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                         <p><span class="status-badge status-<?= strtolower($order['Status']) ?>"><?= htmlspecialchars($order['Status']) ?></span></p>
                         <p>Total: $<?= number_format($order['Total_Amount'], 2) ?></p>
                         <td>
-                            <!-- For view button (all users) -->
                             <button class="view-order-btn" onclick="window.location.href='order-details.php?order_id=<?= $order['Order_Id'] ?>'">View Details</button>
 
-                            <!-- For remove button (managers only) -->
                             <?php if ($isManager): ?>
                                 <form method="POST" style="display: inline;">
                                     <input type="hidden" name="action" value="delete_order">
@@ -389,7 +351,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         <div id="analytics" class="tab-content">
             <h2>Analytics Dashboard</h2>
             
-            <!-- Summary Cards -->
             <div class="analytics-grid">
                 <div class="analytics-card">
                     <h3>Total Inventory</h3>
@@ -455,9 +416,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 </div>
             </div>
             
-            <!-- Analytics Tables -->
             <div class="analytics-tables">
-                <!-- Inventory by Category Table -->
                 <div class="table-container">
                     <h3>Inventory by Category</h3>
                     <table class="analytics-table">
@@ -507,7 +466,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                     </table>
                 </div>
                 
-                <!-- Top Selling Products Table -->
                 <div class="table-container">
                     <h3>Top Selling Products</h3>
                     <table class="analytics-table">
@@ -560,7 +518,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                     </table>
                 </div>
                 
-                <!-- Low Stock Items Table -->
                 <div class="table-container">
                     <h3>Low Stock Items</h3>
                     <table class="analytics-table">
@@ -610,7 +567,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                     </table>
                 </div>
                 
-                <!-- Monthly Orders Table -->
                 <div class="table-container">
                     <h3>Monthly Orders Summary</h3>
                     <table class="analytics-table">
@@ -659,6 +615,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                             </tr>
                             <?php endif; ?>
                         </tbody>
+
+
+                        
                     </table>
                 </div>
             </div>
@@ -672,11 +631,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 <input type="hidden" name="action" value="add_inventory">
                 <div class="form-group">
                     <label for="inventory-type-name">Inventory Type Name:</label>
-                    <input type="text" id="inventory-type-name" name="name" placeholder="Enter inventory type name" required />
+                    <input type="text" id="inventory-type-name" name="name" placeholder="Enter inventory type name" maxlength="15" required />
                 </div>
                 <div class="form-group">
                     <label for="inventory-description">Description:</label>
-                    <textarea id="inventory-description" name="description" placeholder="Enter inventory description" required></textarea>
+                    <textarea id="inventory-description" name="description" placeholder="Enter inventory description" maxlength="30" required></textarea>
                 </div>
                 <div class="form-group buttons">
                     <button type="submit" id="save-inventory-type">Save</button>
@@ -686,7 +645,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         </div>
     </div>
    
-    <!-- Add Order Modal -->
     <div id="add-order-modal" class="modal">
         <div class="modal-content">
             <h3>Add New Order</h3>
@@ -694,13 +652,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 <input type="hidden" name="action" value="add_order">
             
                 <div class="form-group">
-                    <label for="order-customer">Customer Name:</label>
-                    <input type="text" id="order-customer" name="customer_name" required>
+                    <label for="order-customer-name">Customer Name:</label>
+                    <input type="text" id="order-customer-name" name="customer_name" placeholder="Enter customer name" maxlength="20" required />
                 </div>
             
                 <div class="form-group">
                     <label for="order-date">Order Date:</label>
-                    <input type="date" id="order-date" name="order_date" value="<?= date('Y-m-d') ?>" required>
+                    <input type="date" id="order-date" name="order_date" required>
                 </div>
             
                 <div class="form-group">
@@ -731,7 +689,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         </div>
     </div>
 
-    <!-- Edit Order Modal -->
     <div id="edit-order-modal" class="modal">
         <div class="modal-content">
             <h3>Edit Order</h3>
@@ -764,7 +721,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         </div>
     </div>
    
-    <!-- Help/Admin Contacts Modal -->
     <div id="help-modal" class="modal">
         <div class="modal-content" style="width: 600px; max-width: 90%;">
             <h3>Contact System Administrators</h3>
@@ -772,15 +728,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
             
             <div class="admin-contacts">
                 <?php
-                // Query to get ALL system admins (Role = 1) regardless of company
+                $userCompanyCode = $_SESSION['company_code'] ?? '';
+                
                 $stmt = $conn->prepare("
                     SELECT Name, Email 
                     FROM Users 
                     WHERE Role = 1  
                     AND Approval_Status = 1
+                    AND Company_Code = :company_code
                     ORDER BY Name ASC
                 ");
-                $stmt->execute(); // No company code parameter needed
+                $stmt->execute([':company_code' => $userCompanyCode]);
                 $admins = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 if (count($admins) > 0):
@@ -802,7 +760,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                         </tbody>
                     </table>
                 <?php else: ?>
-                    <p class="no-admin-message">No system administrators found in the system.</p>
+                    <p class="no-admin-message">No system administrators found for your company.</p>
                 <?php endif; ?>
             </div>
             
@@ -813,9 +771,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     </div>
    
     <script src="First.js"></script>
-    <!-- Near the end of First.php, before </body> -->
     <script>
-    // Direct inline script to test the add order button
     document.addEventListener('DOMContentLoaded', function() {
         var addOrderBtn = document.getElementById('add-order-btn');
         var addOrderModal = document.getElementById('add-order-modal');
@@ -837,9 +793,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     });
     </script>
     <script>
-      // Direct modal handling script
       document.addEventListener('click', function(event) {
-        // Check if the clicked element is a cancel button
         if (event.target.classList.contains('cancel-btn') || 
             event.target.id === 'close-order-modal' ||
             (event.target.tagName.toLowerCase() === 'button' && 
@@ -847,7 +801,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
       
           console.log('Cancel button clicked!');
       
-          // Find the closest modal parent
           const modal = event.target.closest('.modal');
           if (modal) {
             console.log('Modal found, closing...');
@@ -855,6 +808,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
           }
         }
       });
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.getElementById('order-date');
+        
+        if (dateInput) {
+            const today = new Date();
+            
+            const minDate = new Date();
+            minDate.setFullYear(today.getFullYear() - 5);
+            
+            const maxDate = new Date();
+            maxDate.setFullYear(today.getFullYear() + 5);
+            
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            dateInput.min = formatDate(minDate);
+            dateInput.max = formatDate(maxDate);
+            
+            dateInput.value = formatDate(today);
+        }
+    });
     </script>
 </body>
 </html>
