@@ -31,51 +31,55 @@ try {
 } catch(PDOException $e) {
     $error_message = "Database error: " . $e->getMessage();
 }
-
-if ($_SERVER["REQUEST_METHOD"] == "POST" && !$error_message) {
-    $name = $_POST['name'];
-    $email = $_POST['email'];
-    $password = $_POST['password'];
-    $company_code = $_POST['company_code'];
+  if ($_SERVER["REQUEST_METHOD"] == "POST" && !$error_message) {
+      $name = $_POST['name'];
+      $email = $_POST['email'];
+      $password = $_POST['password'];
+      $company_code = $_POST['company_code'];
     
-    
-    $stmt = $conn->prepare("SELECT * FROM Company WHERE Company_Code = :code");
-    $stmt->execute([':code' => $company_code]);
-    
-    if ($stmt->rowCount() == 0) {
-        $error_message = "Invalid company code. Please try again.";
-    } else {
+      if (strlen($name) > 40) {
+          $error_message = "Name cannot exceed 40 characters.";
+      } else if (strlen($email) > 40) {
+          $error_message = "Email cannot exceed 40 characters.";
+      } else if (strlen($password) < 6 || strlen($password) > 40) {
+          $error_message = "Password must be between 6 and 40 characters.";
+      } else {
+          $stmt = $conn->prepare("SELECT * FROM Company WHERE Company_Code = :code");
+          $stmt->execute([':code' => $company_code]);
         
-        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-        
-        try {
-            $conn->beginTransaction();
+          if ($stmt->rowCount() == 0) {
+              $error_message = "Invalid company code. Please try again.";
+          } else {            
+              $hashed_password = password_hash($password, PASSWORD_DEFAULT);
             
-           
-            if ($companyCodeColumn) {
-                $sql = "INSERT INTO Users (Name, Email, Password, Role, $companyCodeColumn, Approval_Status) 
-                        VALUES (:name, :email, :password, 0, :company_code, 0)";
+              try {
+                  $conn->beginTransaction();
                 
-                $stmt = $conn->prepare($sql);
-                $stmt->execute([
-                    ':name' => $name,
-                    ':email' => $email,
-                    ':password' => $hashed_password,
-                    ':company_code' => $company_code
-                ]);
+               
+                  if ($companyCodeColumn) {
+                      $sql = "INSERT INTO Users (Name, Email, Password, Role, $companyCodeColumn, Approval_Status) 
+                              VALUES (:name, :email, :password, 0, :company_code, 0)";
+                    
+                      $stmt = $conn->prepare($sql);
+                      $stmt->execute([
+                          ':name' => $name,
+                          ':email' => $email,
+                          ':password' => $hashed_password,
+                          ':company_code' => $company_code
+                      ]);
+                    
+                      $conn->commit();
+                    
+                      $success_message = "Registration successful! Your account is pending approval by the administrator.";
+                  }
                 
-                $conn->commit();
-                
-                $success_message = "Registration successful! Your account is pending approval by the administrator.";
-            }
-            
-        } catch(PDOException $e) {
-            $conn->rollback();
-            $error_message = "Registration failed: " . $e->getMessage();
-        }
-    }
-}
-?>
+              } catch(PDOException $e) {
+                  $conn->rollback();
+                  $error_message = "Registration failed: " . $e->getMessage();
+              }
+          }
+      }
+}?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -98,21 +102,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !$error_message) {
             <form method="POST" action="">
                 <div class="form-group">
                     <label for="name">Full Name</label>
-                    <input type="text" id="name" name="name" required>
+                    <input type="text" id="name" name="name" maxlength="40" required>
+                    <small class="char-count">0/40 characters</small>
                 </div>
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required>
+                    <input type="email" id="email" name="email" maxlength="40" required>
+                    <small class="char-count">0/40 characters</small>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="password" id="password" name="password" minlength="6" maxlength="40" required>
+                    <small class="char-count">0/40 characters</small>
                 </div>
                 <div class="form-group">
                     <label for="company_code">Company Code</label>
                     <input type="text" id="company_code" name="company_code" required>
-                </div>
-                <button type="submit" class="register-btn">Register</button>
+                </div>                <button type="submit" class="register-btn">Register</button>
             </form>
         <?php endif; ?>
         
@@ -126,25 +132,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && !$error_message) {
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector('form');
+        const inputs = document.querySelectorAll('input[maxlength]');
         
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                const password = document.getElementById('password').value;
-                const companyCode = document.getElementById('company_code').value;
+        inputs.forEach(input => {
+            const counter = input.nextElementSibling;
+            if (counter && counter.classList.contains('char-count')) {
+                const maxLength = input.getAttribute('maxlength');
                 
-                if (password.length < 6) {
-                    e.preventDefault();
-                    alert('Password must be at least 6 characters long');
-                }
+                counter.textContent = `${input.value.length}/${maxLength} characters`;
                 
-                if (companyCode.trim() === '') {
-                    e.preventDefault();
-                    alert('Company code is required');
+                input.addEventListener('input', function() {
+                    counter.textContent = `${this.value.length}/${maxLength} characters`;
+                    
+                    if (this.value.length > maxLength * 0.8) {
+                        counter.style.color = '#e74c3c';
+                    } else {
+                        counter.style.color = '';
+                    }
+                });
+            }
+        });
+        
+        const passwordField = document.getElementById('password');
+        if (passwordField) {
+            const counter = passwordField.nextElementSibling;
+            
+            passwordField.addEventListener('input', function() {
+                const length = this.value.length;
+                const maxLength = this.getAttribute('maxlength');
+                
+                counter.textContent = `${length}/${maxLength} characters`;
+                
+                if (length < 6) {
+                    counter.style.color = '#e74c3c';
+                } else if (length < 10) {
+                    counter.style.color = '#f39c12'; 
+                } else {
+                    counter.style.color = '#27ae60'; 
                 }
             });
         }
-    });
-    </script>
-</body>
+    });    </script></body>
 </html>
