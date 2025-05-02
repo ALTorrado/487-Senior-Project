@@ -5,7 +5,7 @@ require_once 'db_connect.php';
 $error_message = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = $_POST['email'];
+    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
     $password = $_POST['password'];
     
     $stmt = $conn->prepare("SELECT * FROM Users WHERE Email = :email");
@@ -15,23 +15,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (password_verify($password, $user['Password'])) {
-            // Check approval status
             if ($user['Approval_Status'] == 0) {
                 $error_message = "Your account is pending approval. Please check back later.";
             } else if ($user['Approval_Status'] == 2) {
                 $error_message = "Your account has been rejected. Please contact support.";
             } else {
-                // Approved user - set session and redirect
                 $_SESSION['user_id'] = $user['User_Id'];
                 $_SESSION['name'] = $user['Name'];
                 $_SESSION['email'] = $user['Email'];
                 $_SESSION['role'] = $user['Role'];
                 $_SESSION['company_code'] = $user['Company_Code'];
                 
-                // Redirect based on role
-                if ($user['Role'] == 1) { // Admin
+                if ($user['Role'] == 1) { 
                     header("Location: admin_dashboard.php");
-                } else { // Regular user
+                } else { 
                     header("Location: First.php");
                 }
                 exit();
@@ -59,6 +56,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php if ($error_message): ?>
             <div class="error-message"><?= htmlspecialchars($error_message) ?></div>
         <?php endif; ?>
+        
+        
         
         <form method="POST" action="">
             <div class="form-group">
