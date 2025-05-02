@@ -78,3 +78,21 @@ h1 {
 .user-link a:hover {
     text-decoration: underline;
 }
+.char-count {
+    display: block;
+    font-size: 12px;
+    color: #7f8c8d;
+    text-align: right;
+    margin-top: 2px;
+}
+.char-count {
+    display: block;
+    font-size: 12px;
+    color: #7f8c8d;
+    text-align: right;
+    margin-top: 2px;
+}
+
+.char-count.warning {
+    color: #e74c3c;
+}
