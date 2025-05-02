@@ -1,8 +1,23 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const registerBtn = document.querySelector('.register-btn');
-    const form = document.querySelector('form');
-
-    form.addEventListener('submit', function(e) {
+    const inputs = document.querySelectorAll('input[maxlength]');
+    
+    inputs.forEach(input => {
+        const maxLength = input.getAttribute('maxlength');
+        const counter = input.nextElementSibling;
+        
+        counter.textContent = `${input.value.length}/${maxLength} characters`;
+        
+        input.addEventListener('input', function() {
+            counter.textContent = `${this.value.length}/${maxLength} characters`;
+            
+            if (this.value.length > maxLength * 0.8) {
+                counter.style.color = '#e74c3c';
+            } else {
+                counter.style.color = '';
+            }
+        });
+    });
+});    form.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const companyName = document.getElementById('company_name').value.trim();
@@ -25,4 +40,4 @@ document.addEventListener('DOMContentLoaded', function() {
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailPattern.test(email);
     }
-});
+;
