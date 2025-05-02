@@ -2,12 +2,19 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 require_once 'db_connect.php';
-session_start();
 
-$isAdmin = isset($_SESSION['role']) && $_SESSION['role'] == 1;
+requireAdmin(); 
 
+$isSuperAdmin = empty($_SESSION['company_code']);
+$userCompanyCode = $_SESSION['company_code'];
 
-$stmt = $conn->query("SELECT * FROM Company");
+if ($isSuperAdmin) {
+    $stmt = $conn->query("SELECT * FROM Company");
+} else {
+   
+    $stmt = $conn->prepare("SELECT * FROM Company WHERE Company_Code = :company_code");
+    $stmt->execute([':company_code' => $userCompanyCode]);
+}
 $companies = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 
@@ -41,20 +48,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $code = $_POST['code'];
     
     try {
-       
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM Users WHERE Company_Code = :code");
-        $stmt->execute([':code' => $code]);
-        $userCount = $stmt->fetchColumn();
+        $conn->beginTransaction();
         
-        if ($userCount > 0) {
+        $stmt = $conn->prepare("SELECT User_Id FROM Users WHERE Company_Code = :code");
+        $stmt->execute([':code' => $code]);
+        $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        if (!empty($userIds)) {
+            $userIdsStr = implode(',', $userIds);
             
+            $stmt = $conn->prepare("DELETE FROM Order_Products WHERE Orders_Order_Id IN 
+                                    (SELECT Order_Id FROM Orders WHERE Users_User_Id IN ($userIdsStr))");
+            $stmt->execute();
+            
+            $stmt = $conn->prepare("DELETE FROM Orders WHERE Users_User_Id IN ($userIdsStr)");
+            $stmt->execute();
+            
+        
             $stmt = $conn->prepare("DELETE FROM Users WHERE Company_Code = :code");
             $stmt->execute([':code' => $code]);
         }
         
+        $stmt = $conn->prepare("SELECT Category_Id FROM Category WHERE Company_Code = :code");
+        $stmt->execute([':code' => $code]);
+        $categoryIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        if (!empty($categoryIds)) {
+            $catIdsStr = implode(',', $categoryIds);
+            
+            $stmt = $conn->prepare("DELETE FROM Product WHERE Category_Category_Id IN ($catIdsStr)");
+            $stmt->execute();
+            
+            $stmt = $conn->prepare("DELETE FROM Product WHERE Company_Code = :code");
+            $stmt->execute([':code' => $code]);
+        }
+        
+        $stmt = $conn->prepare("DELETE FROM Category WHERE Company_Code = :code");
+        $stmt->execute([':code' => $code]);
         
         $stmt = $conn->prepare("DELETE FROM Company WHERE Company_Code = :code");
         $result = $stmt->execute([':code' => $code]);
+        
+        $conn->commit();
         
         if ($result) {
             $_SESSION['message'] = "Company deleted successfully!";
@@ -64,10 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $_SESSION['message_type'] = "error";
         }
     } catch (PDOException $e) {
+        $conn->rollback();
         $_SESSION['message'] = "Error deleting company: " . $e->getMessage();
         $_SESSION['message_type'] = "error";
     }
-    
     
     header("Location: admin_dashboard.php#companies");
     exit;
@@ -112,6 +147,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_employee_status') {
+    error_log("Employee status update request received:");
+    error_log("User ID: " . (isset($_POST['user_id']) ? $_POST['user_id'] : 'Not set'));
+    error_log("Status: " . (isset($_POST['status']) ? $_POST['status'] : 'Not set'));
+    error_log("Admin company code: " . (empty($_SESSION['company_code']) ? 'NULL (Super Admin)' : $_SESSION['company_code']));
+    
     $userId = $_POST['user_id'];
     $status = $_POST['status'];
     
@@ -130,7 +170,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $_SESSION['message'] = "Error updating employee status: " . $e->getMessage();
         $_SESSION['message_type'] = "error";
     }
-    
     
     if (isset($_POST['refresh_tab']) && $_POST['refresh_tab'] === 'pending') {
         header("Location: admin_dashboard.php#pending");
@@ -252,8 +291,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             <section id="companies" class="tab-content active">
                 <div class="header-container">
                     <h2>Companies</h2>
-                    <button id="add-company-btn" class="action-btn">Add Company</button>
+                    <?php if ($isSuperAdmin): ?>
+                        <button id="add-company-btn" class="action-btn">Add Company</button>
+                    <?php endif; ?>
                 </div>
+                
+                <?php if (!$isSuperAdmin): ?>
+                    <div class="admin-notice">
+                        <p>You are viewing your company information only. Contact a super administrator for assistance with other companies.</p>
+                    </div>
+                <?php endif; ?>
+                
                 <table>
                     <thead>
                         <tr>
@@ -284,8 +332,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             </td>
                             <td>
                                 <button class="view-employees" data-code="<?= $company['Company_Code'] ?>">View Employees</button>
-                                <button class="edit-company" data-code="<?= $company['Company_Code'] ?>">Edit</button>
-                                <button class="delete-company" data-code="<?= $company['Company_Code'] ?>">Delete</button>
+                                <?php if ($isSuperAdmin): ?>
+                                    <button class="edit-company" data-code="<?= $company['Company_Code'] ?>">Edit</button>
+                                    <button class="delete-company" data-code="<?= $company['Company_Code'] ?>">Delete</button>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -298,6 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <h2>Pending Approvals</h2>
                 </div>
                 <div class="approval-sections">
+                    <?php if ($isSuperAdmin): ?>
                     <div class="approval-box">
                         <h3>Companies Pending Approval</h3>
                         <table>
@@ -336,6 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             </tbody>
                         </table>
                     </div>
+                    <?php endif; ?>
                     <div class="approval-box">
                         <h3>Employees Pending Approval</h3>
                         <table>
@@ -349,13 +401,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             </thead>
                             <tbody>
                                 <?php 
-                                
-                                $pendingEmployeesStmt = $conn->query("
-                                    SELECT u.User_Id, u.Name, u.Email, u.Company_Code, c.Name as CompanyName 
-                                    FROM Users u
-                                    LEFT JOIN Company c ON u.Company_Code = c.Company_Code
-                                    WHERE u.Approval_Status = 0
-                                ");
+                                if ($isSuperAdmin) {
+                                    $pendingEmployeesStmt = $conn->query("
+                                        SELECT u.User_Id, u.Name, u.Email, u.Company_Code, c.Name as CompanyName 
+                                        FROM Users u
+                                        LEFT JOIN Company c ON u.Company_Code = c.Company_Code
+                                        WHERE u.Approval_Status = 0
+                                    ");
+                                } else {
+                                    $pendingEmployeesStmt = $conn->prepare("
+                                        SELECT u.User_Id, u.Name, u.Email, u.Company_Code, c.Name as CompanyName 
+                                        FROM Users u
+                                        LEFT JOIN Company c ON u.Company_Code = c.Company_Code
+                                        WHERE u.Approval_Status = 0 AND u.Company_Code = :company_code
+                                    ");
+                                    $pendingEmployeesStmt->execute([':company_code' => $userCompanyCode]);
+                                }
                                 $pendingEmployees = $pendingEmployeesStmt->fetchAll(PDO::FETCH_ASSOC);
                                 
                                 if (count($pendingEmployees) > 0):
@@ -372,8 +433,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <button class="approve-employee action-btn" data-id="<?= $employee['User_Id'] ?>">Approve</button>
-                                        <button class="reject-employee action-btn" data-id="<?= $employee['User_Id'] ?>">Reject</button>
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="action" value="update_employee_status">
+                                            <input type="hidden" name="user_id" value="<?= $employee['User_Id'] ?>">
+                                            <input type="hidden" name="status" value="1">
+                                            <input type="hidden" name="refresh_tab" value="pending">
+                                            <button type="submit" class="approve-employee action-btn">Approve</button>
+                                        </form>
+                                        
+                                        <form method="POST" style="display:inline;">
+                                            <input type="hidden" name="action" value="update_employee_status">
+                                            <input type="hidden" name="user_id" value="<?= $employee['User_Id'] ?>">
+                                            <input type="hidden" name="status" value="2">
+                                            <input type="hidden" name="refresh_tab" value="pending">
+                                            <button type="submit" class="reject-employee action-btn">Reject</button>
+                                        </form>
                                     </td>
                                 </tr>
                                 <?php 
@@ -405,14 +479,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     </thead>
                     <tbody>
                         <?php 
-                        
-                        $adminsStmt = $conn->query("
-                            SELECT u.User_Id, u.Name, u.Email, u.Approval_Status, c.Name as CompanyName, c.Company_Code 
-                            FROM Users u
-                            LEFT JOIN Company c ON u.Company_Code = c.Company_Code
-                            WHERE u.Role = 1
-                            ORDER BY c.Name, u.Name
-                        ");
+                        if ($isSuperAdmin) {
+                            $adminsStmt = $conn->query("
+                                SELECT u.User_Id, u.Name, u.Email, u.Approval_Status, c.Name as CompanyName, c.Company_Code 
+                                FROM Users u
+                                LEFT JOIN Company c ON u.Company_Code = c.Company_Code
+                                WHERE u.Role = 1
+                                ORDER BY c.Name, u.Name
+                            ");
+                        } else {
+                            $adminsStmt = $conn->prepare("
+                                SELECT u.User_Id, u.Name, u.Email, u.Approval_Status, c.Name as CompanyName, c.Company_Code 
+                                FROM Users u
+                                LEFT JOIN Company c ON u.Company_Code = c.Company_Code
+                                WHERE u.Role = 1 AND (u.Company_Code = :company_code OR u.Company_Code IS NULL)
+                                ORDER BY c.Name, u.Name
+                            ");
+                            $adminsStmt->execute([':company_code' => $userCompanyCode]);
+                        }
                         $admins = $adminsStmt->fetchAll(PDO::FETCH_ASSOC);
                         
                         if (count($admins) > 0):
@@ -535,7 +619,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         </div>
     </div>
 
-    <!-- Include external JavaScript file -->
+    
     <script src="admin_dashboard.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            const deleteForm = document.getElementById('delete-employee-form');
+            if (deleteForm) {
+                deleteForm.addEventListener('submit', function(e) {
+                    const userIdToDelete = document.getElementById('delete-employee-id').value;
+                    
+                    const currentUserId = document.body.getAttribute('data-current-user-id');
+                    
+                    if (userIdToDelete === currentUserId) {
+                        const confirmSelfDelete = confirm("WARNING: You are about to delete your own account. If you proceed, you will be logged out immediately. Are you sure you want to continue?");
+                        if (!confirmSelfDelete) {
+                            e.preventDefault();
+                            document.getElementById('delete-employee-modal').style.display = 'none';
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
