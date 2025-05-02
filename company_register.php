@@ -1,38 +1,43 @@
 <?php
 require_once 'db_connect.php';
 session_start();
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $company_name = $_POST['company_name'];
-    $company_email = $_POST['company_email'];
-    $company_code = bin2hex(random_bytes(8));
+  if ($_SERVER["REQUEST_METHOD"] == "POST") {
+      $company_name = $_POST['company_name'];
+      $company_email = $_POST['company_email'];
     
-    try {
-        $conn->beginTransaction();
+      if (strlen($company_name) > 60) {
+          $error_message = "Company name cannot exceed 60 characters.";
+      } else if (strlen($company_email) > 60) {
+          $error_message = "Company email cannot exceed 60 characters.";
+      } else {
+          $company_code = bin2hex(random_bytes(8));
         
-        $sql = "INSERT INTO Company (Name, Company_Email, Company_Code) VALUES (:name, :email, :code)";
-        
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([
-            ':name' => $company_name,
-            ':email' => $company_email,
-            ':code' => $company_code
-        ]);
-        
-        $conn->commit();
-      
-        
-        $_SESSION['company_code'] = $company_code;
-        
-      
-        header("Location: login.php");
-        exit();
-      
-    } catch(PDOException $e) {
-        $conn->rollback();
-        $error_message = "Registration failed: " . $e->getMessage();
-       
-    }
+          try {
+              $conn->beginTransaction();
+            
+              $sql = "INSERT INTO Company (Name, Company_Email, Company_Code) VALUES (:name, :email, :code)";
+            
+              $stmt = $conn->prepare($sql);
+              $stmt->execute([
+                  ':name' => $company_name,
+                  ':email' => $company_email,
+                  ':code' => $company_code
+              ]);
+            
+              $conn->commit();
+          
+            
+              $_SESSION['company_code'] = $company_code;
+            
+          
+              header("Location: login.php");
+              exit();
+          
+          } catch(PDOException $e) {
+              $conn->rollback();
+              $error_message = "Registration failed: " . $e->getMessage();
+          }
+      }
 }?>
 
 <!DOCTYPE html>
@@ -48,13 +53,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <form method="POST" action="">
             <div class="form-group">
                 <label for="company_name">Company Name</label>
-                <input type="text" id="company_name" name="company_name" required>
+                <input type="text" id="company_name" name="company_name" maxlength="60" required>
+                <small class="char-count">60 character limit!</small>
             </div>
             <div class="form-group">
                 <label for="company_email">Company Email</label>
-                <input type="email" id="company_email" name="company_email" required>
-            </div>
-            <button type="submit" class="register-btn">Register Company</button>
+                <input type="email" id="company_email" name="company_email" maxlength="60" required>
+                <small class="char-count">60 character limit!</small>            </div>            <button type="submit" class="register-btn">Register Company</button>
         </form>
         <div class="user-link">
             <p>Already have a company code? <a href="register.php">Register as user</a></p>
@@ -62,5 +67,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
 </body>
 </html>
-
-<script src="company_register.js"></script>
