@@ -1,24 +1,19 @@
 <?php
 require_once 'db_connect.php';
-session_start();
+require_once 'session.php'; 
 
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
 
-// Get user role
+requireLogin(); 
+
+
 $user_id = $_SESSION['user_id'];
 $stmt = $conn->prepare("SELECT Role FROM Users WHERE User_Id = :user_id");
 $stmt->execute([':user_id' => $user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
-$isManager = isset($user['Role']) && ($user['Role'] == 2 || $user['Role'] == 1); // Role 2 = Manager, Role 1 = Admin
+$isManager = isset($user['Role']) && ($user['Role'] == 2 || $user['Role'] == 1); 
 
-// Get company info
 $company_code = $_SESSION['company_code'];
-$company_name = "Warehouse Dashboard"; // Default name
-
+$company_name = "Warehouse Dashboard"; 
 if ($company_code) {
     $stmt = $conn->prepare("SELECT Name FROM Company WHERE Company_Code = :code");
     $stmt->execute([':code' => $company_code]);
@@ -29,7 +24,6 @@ if ($company_code) {
     }
 }
 
-// Check if order_id is provided
 if (!isset($_GET['order_id'])) {
     header("Location: First.php");
     exit();
@@ -40,7 +34,6 @@ $is_new_order = isset($_GET['new']) && $_GET['new'] == 1;
 $success_message = '';
 $error_message = '';
 
-// Get order details
 $stmt = $conn->prepare("
     SELECT o.*, u.Name as CreatedBy 
     FROM Orders o 
@@ -50,13 +43,11 @@ $stmt = $conn->prepare("
 $stmt->execute([':order_id' => $order_id]);
 $order = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// If order not found, redirect back to orders
 if (!$order) {
     header("Location: First.php");
     exit();
 }
 
-// Function to update order total
 function updateOrderTotal($conn, $order_id) {
     $stmt = $conn->prepare("
         SELECT SUM(op.Quantity * op.Price_At_Time) as Total
@@ -77,33 +68,27 @@ function updateOrderTotal($conn, $order_id) {
     return $total;
 }
 
-// Handle product operations
 if ($_SERVER["REQUEST_METHOD"] == "POST" && !$isManager) {
-    // Non-managers trying to submit forms - redirect with error
     $error_message = "You don't have permission to modify orders.";
     header("Location: order-details.php?order_id={$order_id}&error=" . urlencode($error_message));
     exit();
 }
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (isset($_POST['action'])) {
-        // Add product to order
         if ($_POST['action'] == 'add_product' && $isManager) {
             $product_id = $_POST['product_id'];
             $quantity = $_POST['quantity'];
             
-            // Get product details
             $stmt = $conn->prepare("SELECT Price, Stock_Quantity, Name FROM Product WHERE Product_Id = :product_id");
             $stmt->execute([':product_id' => $product_id]);
             $product = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($product) {
-                // Check if there's enough stock
                 if ($product['Stock_Quantity'] < $quantity) {
                     $error_message = "Not enough stock available for " . $product['Name'] . ". Only " . $product['Stock_Quantity'] . " units available.";
                 } else {
                     $price_at_time = $product['Price'];
                     
-                    // Check if product already exists in order
                     $stmt = $conn->prepare("
                         SELECT * FROM Order_Products 
                         WHERE Orders_Order_Id = :order_id AND Product_Product_Id = :product_id
@@ -115,7 +100,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $existingProduct = $stmt->fetch(PDO::FETCH_ASSOC);
                     
                     if ($existingProduct) {
-                        // Update existing order product
                         $newQuantity = $existingProduct['Quantity'] + $quantity;
                         $stmt = $conn->prepare("
                             UPDATE Order_Products 
@@ -128,7 +112,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         ]);
                         $success_message = "Product quantity updated!";
                     } else {
-                        // Add new order product
                         $stmt = $conn->prepare("
                             INSERT INTO Order_Products (Quantity, Price_At_Time, Orders_Order_Id, Product_Product_Id)
                             VALUES (:quantity, :price, :order_id, :product_id)
@@ -142,10 +125,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $success_message = "Product added to order!";
                     }
                     
-                    // Update order total
                     updateOrderTotal($conn, $order_id);
                     
-                    // Update product stock
                     $stmt = $conn->prepare("
                         UPDATE Product 
                         SET Stock_Quantity = Stock_Quantity - :quantity 
@@ -161,18 +142,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
         
-        // Remove product from order
         else if ($_POST['action'] == 'remove_product' && $isManager) {
             $item_id = $_POST['item_id'];
             $product_id = $_POST['product_id'];
             $quantity = $_POST['quantity'];
             
             try {
-                // Remove product from order
                 $stmt = $conn->prepare("DELETE FROM Order_Products WHERE Order_Item_Id = :item_id");
                 $stmt->execute([':item_id' => $item_id]);
                 
-                // Return items to inventory
                 $stmt = $conn->prepare("
                     UPDATE Product 
                     SET Stock_Quantity = Stock_Quantity + :quantity 
@@ -183,7 +161,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     ':product_id' => $product_id
                 ]);
                 
-                // Update order total
                 updateOrderTotal($conn, $order_id);
                 
                 $success_message = "Product removed from order!";
@@ -192,45 +169,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
         
-        // Update order details
         else if ($_POST['action'] == 'update_order' && $isManager) {
             $customer_name = $_POST['customer_name'];
+            $order_date = $_POST['order_date'];
             $status = $_POST['status'];
-            $payment_status = $_POST['payment_status']; // Added payment status field
+            $payment_status = $_POST['payment_status'];
             
-            try {
-                // Update order details with payment status
-                $stmt = $conn->prepare("
-                    UPDATE Orders 
-                    SET Customer_Name = :customer_name, Status = :status, Payment_Status = :payment_status
-                    WHERE Order_Id = :order_id
-                ");
-                $stmt->execute([
-                    ':customer_name' => $customer_name,
-                    ':status' => $status,
-                    ':payment_status' => $payment_status,
-                    ':order_id' => $order_id
-                ]);
+            if (strlen($customer_name) > 15) {
+                $error_message = "Customer name cannot exceed 15 characters.";
+            } 
+            else {
+                $minDate = date('Y-m-d', strtotime('-5 years'));
+                $maxDate = date('Y-m-d', strtotime('+5 years'));
                 
-                $success_message = "Order details updated!";
-                
-                // Refresh order data
-                $stmt = $conn->prepare("
-                    SELECT o.*, u.Name as CreatedBy 
-                    FROM Orders o 
-                    LEFT JOIN Users u ON o.Users_User_Id = u.User_Id
-                    WHERE o.Order_Id = :order_id
-                ");
-                $stmt->execute([':order_id' => $order_id]);
-                $order = $stmt->fetch(PDO::FETCH_ASSOC);
-            } catch (PDOException $e) {
-                $error_message = "Error updating order: " . $e->getMessage();
+                if ($order_date < $minDate || $order_date > $maxDate) {
+                    $error_message = "Order date must be between " . date('M d, Y', strtotime($minDate)) . " and " . date('M d, Y', strtotime($maxDate));
+                } else {
+                    try {
+                        $stmt = $conn->prepare("
+                            UPDATE Orders 
+                            SET Customer_Name = :customer_name, 
+                                Order_Date = :order_date,
+                                Status = :status, 
+                                Payment_Status = :payment_status
+                            WHERE Order_Id = :order_id
+                        ");
+                        $stmt->execute([
+                            ':customer_name' => $customer_name,
+                            ':order_date' => $order_date,
+                            ':status' => $status,
+                            ':payment_status' => $payment_status,
+                            ':order_id' => $order_id
+                        ]);
+                        
+                        $success_message = "Order details updated!";
+                        
+                        $stmt = $conn->prepare("
+                            SELECT o.*, u.Name as CreatedBy 
+                            FROM Orders o 
+                            LEFT JOIN Users u ON o.Users_User_Id = u.User_Id
+                            WHERE o.Order_Id = :order_id
+                        ");
+                        $stmt->execute([':order_id' => $order_id]);
+                        $order = $stmt->fetch(PDO::FETCH_ASSOC);
+                    } catch (PDOException $e) {
+                        $error_message = "Error updating order: " . $e->getMessage();
+                    }
+                }
             }
         }
     }
 }
 
-// Get order products
 $stmt = $conn->prepare("
     SELECT op.*, p.Name as ProductName, p.Description, p.Units
     FROM Order_Products op
@@ -240,7 +230,6 @@ $stmt = $conn->prepare("
 $stmt->execute([':order_id' => $order_id]);
 $orderProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get available products for this company (for the add product dropdown)
 $stmt = $conn->prepare("
     SELECT p.* 
     FROM Product p
@@ -250,13 +239,11 @@ $stmt = $conn->prepare("
 $stmt->execute([':company_code' => $company_code]);
 $availableProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Calculate order total (in case it needs to be updated)
 $orderTotal = 0;
 foreach ($orderProducts as $product) {
     $orderTotal += $product['Quantity'] * $product['Price_At_Time'];
 }
 
-// Update the total if it's different from what's in the database
 if ($orderTotal != $order['Total_Amount']) {
     $stmt = $conn->prepare("UPDATE Orders SET Total_Amount = :total WHERE Order_Id = :order_id");
     $stmt->execute([
@@ -340,7 +327,6 @@ if ($orderTotal != $order['Total_Amount']) {
                         </span>
                     </p>
                 </div>
-                <!-- Add Payment Status here -->
                 <div class="meta-item">
                     <h3>Payment Status</h3>
                     <p>
@@ -437,7 +423,6 @@ if ($orderTotal != $order['Total_Amount']) {
         </div>
     </div>
     
-    <!-- Add Product Modal -->
     <?php if ($isManager): ?>
         <div id="add-product-modal" class="modal">
             <div class="modal-content">
@@ -472,7 +457,6 @@ if ($orderTotal != $order['Total_Amount']) {
         </div>
     <?php endif; ?>
     
-    <!-- Edit Order Modal -->
     <?php if ($isManager): ?>
         <div id="edit-order-modal" class="modal">
             <div class="modal-content">
@@ -484,7 +468,11 @@ if ($orderTotal != $order['Total_Amount']) {
                     <input type="hidden" name="action" value="update_order">
                     <div class="form-group">
                         <label for="customer_name">Customer Name:</label>
-                        <input type="text" id="customer_name" name="customer_name" value="<?= htmlspecialchars($order['Customer_Name'] ?? '') ?>" required>
+                        <input type="text" id="customer_name" name="customer_name" value="<?= htmlspecialchars($order['Customer_Name'] ?? '') ?>" maxlength="15" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="order_date">Order Date:</label>
+                        <input type="date" id="order_date" name="order_date" value="<?= htmlspecialchars($order['Order_Date'] ?? '') ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="status">Order Status:</label>
@@ -499,7 +487,6 @@ if ($orderTotal != $order['Total_Amount']) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <!-- Add Payment Status field here -->
                     <div class="form-group">
                         <label for="payment_status">Payment Status:</label>
                         <select id="payment_status" name="payment_status" required>
@@ -524,7 +511,6 @@ if ($orderTotal != $order['Total_Amount']) {
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Add Product Modal
         const addProductBtn = document.getElementById('add-product-btn');
         const addProductModal = document.getElementById('add-product-modal');
         
@@ -533,7 +519,6 @@ if ($orderTotal != $order['Total_Amount']) {
                 addProductModal.style.display = 'block';
             });
             
-            // Close modal when X is clicked
             const closeButtons = addProductModal.querySelectorAll('.close-modal, .cancel-btn');
             closeButtons.forEach(button => {
                 button.addEventListener('click', function() {
@@ -542,7 +527,6 @@ if ($orderTotal != $order['Total_Amount']) {
             });
         }
         
-        // Edit Order Modal
         const editOrderBtn = document.getElementById('edit-order-btn');
         const editOrderModal = document.getElementById('edit-order-modal');
         
@@ -551,7 +535,6 @@ if ($orderTotal != $order['Total_Amount']) {
                 editOrderModal.style.display = 'block';
             });
             
-            // Close modal when X is clicked
             const closeButtons = editOrderModal.querySelectorAll('.close-modal, .cancel-btn');
             closeButtons.forEach(button => {
                 button.addEventListener('click', function() {
@@ -560,7 +543,6 @@ if ($orderTotal != $order['Total_Amount']) {
             });
         }
         
-        // Close modals when clicking outside of them
         window.addEventListener('click', function(event) {
             if (event.target === addProductModal) {
                 addProductModal.style.display = 'none';
@@ -570,7 +552,6 @@ if ($orderTotal != $order['Total_Amount']) {
             }
         });
         
-        // Update max stock and validate quantity
         const productSelect = document.getElementById('product_id');
         const quantityInput = document.getElementById('quantity');
         const maxStockSpan = document.getElementById('max-stock');
@@ -588,7 +569,6 @@ if ($orderTotal != $order['Total_Amount']) {
                 }
             });
             
-            // Set initial max stock if a product is selected
             if (productSelect.selectedIndex > 0) {
                 const selectedOption = productSelect.options[productSelect.selectedIndex];
                 const maxStock = selectedOption.dataset.stock || 0;
@@ -598,7 +578,6 @@ if ($orderTotal != $order['Total_Amount']) {
             }
         }
         
-        // Confirm product removal
         const removeForms = document.querySelectorAll('.remove-product-form');
         removeForms.forEach(form => {
             form.addEventListener('submit', function(e) {
@@ -607,6 +586,32 @@ if ($orderTotal != $order['Total_Amount']) {
                 }
             });
         });
+        
+        const orderDateInput = document.getElementById('order_date');
+        
+        if (orderDateInput) {
+            const today = new Date();
+            
+            const minDate = new Date();
+            minDate.setFullYear(today.getFullYear() - 5);
+            
+            const maxDate = new Date();
+            maxDate.setFullYear(today.getFullYear() + 5);
+            
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            orderDateInput.min = formatDate(minDate);
+            orderDateInput.max = formatDate(maxDate);
+            
+            if (!orderDateInput.value) {
+                orderDateInput.value = formatDate(today);
+            }
+        }
     });
     </script>
 </body>
